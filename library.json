@@ -1,0 +1,25 @@
+{
+  "name": "MQTTHADevice",
+  "version": "0.1.0",
+  "description": "Professional, lightweight Arduino/ESP library for Home Assistant MQTT Device Auto-Discovery utilizing the new cmps array.",
+  "keywords": ["home-assistant", "mqtt", "iot", "esp32", "esp8266", "auto-discovery"],
+  "authors": [
+    {
+      "name": "Leonardo Arsie"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/LeonardoArsie/MQTTHADevice"
+  },
+  "dependencies": {
+    "bblanchon/ArduinoJson": "^7.0.0",
+    "knolleary/PubSubClient": "^2.8.0"
+  },
+  "frameworks": ["arduino"],
+  "platforms": ["espressif32", "espressif8266"],
+  "build": {
+    "srcDir": "src",
+    "includeDir": "include"
+  }
+}
