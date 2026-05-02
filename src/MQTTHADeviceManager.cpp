@@ -54,14 +54,18 @@ void MQTTHADeviceManager::publishState(HASwitch& entity, bool state) {
 }
 
 void MQTTHADeviceManager::_connectAndEnsureDiscovery() {
+    Serial.println("Tentativo di connessione MQTT...");
     bool connected = false;
     if (_mqttUser != nullptr && _mqttPass != nullptr) {
+        Serial.println("Uso credenziali...");
         connected = _mqttClient.connect(_device.getId(), _mqttUser, _mqttPass, _availabilityTopic.c_str(), 1, true, _offlinePayload);
     } else {
+        Serial.println("Senza credenziali...");
         connected = _mqttClient.connect(_device.getId(), _availabilityTopic.c_str(), 1, true, _offlinePayload);
     }
 
     if (connected) {
+        Serial.println("Connesso! Sottoscrizione topics...");
         // Subscribe to all command topics
         for (size_t i = 0; i < _entities.size(); ++i) {
             const char* cmdTopic = _entities[i]->getCommandTopic();
@@ -71,10 +75,15 @@ void MQTTHADeviceManager::_connectAndEnsureDiscovery() {
         }
 
         if (!_discoveryPublished) {
+            Serial.println("Pubblicazione Discovery...");
             publishDiscovery();
             _discoveryPublished = true;
         }
         _mqttClient.publish(_availabilityTopic.c_str(), _onlinePayload, true);
+        Serial.println("Dispositivo Pronto.");
+    } else {
+        Serial.print("Connessione fallita, rc=");
+        Serial.println(_mqttClient.state());
     }
 }
 
