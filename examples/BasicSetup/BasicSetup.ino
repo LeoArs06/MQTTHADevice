@@ -5,7 +5,6 @@
 #include <WiFi.h>
 #endif
 #include <PubSubClient.h>
-
 #include <MQTTHADevice.h>
 
 // Your Wi-Fi & MQTT credentials
@@ -17,72 +16,67 @@ WiFiClient espClient;
 PubSubClient mqttClient(espClient);
 
 // Initialize the parent device
-HADevice device("my_unique_123");
+HADevice device("my_unique_123", "My Custom Relay");
+
+// Create the manager
+MQTTHADeviceManager manager(mqttClient, device);
 
 // Attach entities
-HASwitch myRelay("Relay 1", "relay_1");
+HASwitch myRelay("relay_1", "Relay 1");
+
+void mqttCallback(char* topic, byte* payload, unsigned int length) {
+  manager.handleMessage(topic, payload, length);
+}
 
 void setup_wifi() {
   delay(10);
-  Serial.println();
   Serial.print("Connecting to ");
   Serial.println(ssid);
 
   WiFi.begin(ssid, password);
-
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
   }
 
-  Serial.println("");
-  Serial.println("WiFi connected");
-  Serial.println("IP address: ");
-  Serial.println(WiFi.localIP());
+  Serial.println("\nWiFi connected");
 }
 
-void reconnect() {
-  while (!mqttClient.connected()) {
-    Serial.print("Attempting MQTT connection...");
-    // Attempt to connect
-    if (mqttClient.connect(device.getId().c_str())) {
-      Serial.println("connected");
-      
-      // Publish discovery messages once connected
-      // // Example with manager (assuming it's initialized as `MQTTHADeviceManager manager(mqttClient, device);`)
-      // manager.publishDiscovery(); 
-    } else {
-      Serial.print("failed, rc=");
-      Serial.print(mqttClient.state());
-      Serial.println(" try again in 5 seconds");
-      delay(5000);
-    }
-  }
+void onRelayCommand(bool state) {
+  Serial.print("Relay state changed to: ");
+  Serial.println(state ? "ON" : "OFF");
+  
+  // Apply logic (e.g. digitalWrite)
+  
+  // Publish state back to HA
+  manager.publishState(myRelay, state);
 }
 
 void setup() {
   Serial.begin(115200);
 
-  // 1. Setup the device name
-  device.setName("My Custom Relay");
+  // Configure Relay
+  myRelay.onCommand(onRelayCommand);
+  myRelay.setStateTopic("home/relay1/state");
+  myRelay.setCommandTopic("home/relay1/set");
 
-  // 2. Attach entities
-  device.addEntity(&myRelay);
+  // Add entities to manager
+  manager.addEntity(&myRelay);
 
-  // 3. Connect to WiFi
+  // Setup WiFi
   setup_wifi();
 
-  // 4. Set MQTT Server
+  // Configure MQTT
   mqttClient.setServer(mqtt_server, 1883);
+  mqttClient.setCallback(mqttCallback);
+
+  // Optional: Set MQTT credentials
+  // manager.setCredentials("user", "pass");
 
   Serial.println("Setup completed.");
 }
 
 void loop() {
-  if (!mqttClient.connected()) {
-    reconnect();
-  }
-  mqttClient.loop();
-
-  // Your logic here...
+  // manager.loop() handles connection and discovery automatically
+  manager.loop();
 }

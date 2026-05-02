@@ -45,6 +45,16 @@ public:
      */
     const char* getDeviceClass() const { return _deviceClass; }
 
+    /**
+     * @brief Get the command topic (if any).
+     */
+    virtual const char* getCommandTopic() const { return nullptr; }
+
+    /**
+     * @brief Handle an incoming command for this entity.
+     */
+    virtual void handleCommand(const char* payload) {}
+
 protected:
     const char* _componentType;
     const char* _uniqueId;

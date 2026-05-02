@@ -5,7 +5,6 @@
 #include <WiFi.h>
 #endif
 #include <PubSubClient.h>
-
 #include <MQTTHADevice.h>
 
 // Hardware settings
@@ -20,21 +19,29 @@ const char* mqtt_server = "192.168.1.10";
 WiFiClient espClient;
 PubSubClient mqttClient(espClient);
 
-HADevice device("sensor_switch_1");
-HASwitch myRelay("Main Relay", "relay_1");
-HASensor myTemperature("Room Temperature", "temp_1", "temperature", "°C");
+// Initialize Device & Entities
+HADevice device("sensor_switch_1", "Room Controller");
+HASwitch myRelay("relay_1", "Main Relay");
+HASensor myTemperature("temp_1", "Room Temperature");
+MQTTHADeviceManager manager(mqttClient, device);
 
 long lastMsg = 0;
 
-void callback(char* topic, byte* payload, unsigned int length) {
-  // Handle incoming MQTT messages (e.g., turning the switch on/off)
-  // Check if topic matches the command topic for the relay
-  // and control the RELAY_PIN accordingly
+void onRelayCommand(bool state) {
+  digitalWrite(RELAY_PIN, state ? HIGH : LOW);
+  Serial.print("Relay set to: ");
+  Serial.println(state ? "ON" : "OFF");
+  
+  // Update state in HA
+  manager.publishState(myRelay, state);
+}
+
+void mqttCallback(char* topic, byte* payload, unsigned int length) {
+  manager.handleMessage(topic, payload, length);
 }
 
 void setup_wifi() {
   delay(10);
-  Serial.println();
   Serial.print("Connecting to ");
   Serial.println(ssid);
   WiFi.begin(ssid, password);
@@ -43,62 +50,47 @@ void setup_wifi() {
     Serial.print(".");
   }
   Serial.println("\nWiFi connected");
-  Serial.println("IP address: ");
-  Serial.println(WiFi.localIP());
-}
-
-void reconnect() {
-  while (!mqttClient.connected()) {
-    Serial.print("Attempting MQTT connection...");
-    if (mqttClient.connect(device.getId().c_str())) {
-      Serial.println("connected");
-      
-      // Send auto-discovery configuration
-      // // Example with manager (assuming it's initialized as `MQTTHADeviceManager manager(mqttClient, device);`)
-      // manager.publishDiscovery(); 
-      
-      // Subscribe to command topic for switch
-      // mqttClient.subscribe(myRelay.getCommandTopic().c_str());
-    } else {
-      Serial.print("failed, rc=");
-      Serial.print(mqttClient.state());
-      Serial.println(" try again in 5 seconds");
-      delay(5000);
-    }
-  }
 }
 
 void setup() {
   Serial.begin(115200);
   pinMode(RELAY_PIN, OUTPUT);
 
-  // Configure Home Assistant Device
-  device.setName("Room Controller");
+  // Configure Device
   device.setModel("ESP32 Test Board");
+  device.setManufacturer("Leonardo Arsie");
 
-  // Attach entities
-  device.addEntity(&myRelay);
-  device.addEntity(&myTemperature);
+  // Configure Switch
+  myRelay.setCommandTopic("home/room/relay/set");
+  myRelay.setStateTopic("home/room/relay/state");
+  myRelay.onCommand(onRelayCommand);
+
+  // Configure Sensor
+  myTemperature.setStateTopic("home/room/temp/state");
+  myTemperature.setDeviceClass("temperature");
+  myTemperature.setUnitOfMeasurement("°C");
+
+  // Add entities to manager
+  manager.addEntity(&myRelay);
+  manager.addEntity(&myTemperature);
 
   setup_wifi();
   mqttClient.setServer(mqtt_server, 1883);
-  mqttClient.setCallback(callback);
+  mqttClient.setCallback(mqttCallback);
 }
 
 void loop() {
-  if (!mqttClient.connected()) {
-    reconnect();
-  }
-  mqttClient.loop();
+  manager.loop();
 
   long now = millis();
   // Publish temperature every 10 seconds
   if (now - lastMsg > 10000) {
     lastMsg = now;
-    float simulatedTemp = 20.0 + random(-5, 5); // Example fake data
+    float simulatedTemp = 20.0 + (random(-50, 50) / 10.0);
     
-    // Publish sensor state
-    // mqttClient.publish(myTemperature.getStateTopic().c_str(), String(simulatedTemp).c_str());
+    // Publish sensor state manually (manager handles Switch but user handles Sensor values)
+    mqttClient.publish(myTemperature.getStateTopic(), String(simulatedTemp).c_str(), true);
+    
     Serial.print("Published Temp: ");
     Serial.println(simulatedTemp);
   }

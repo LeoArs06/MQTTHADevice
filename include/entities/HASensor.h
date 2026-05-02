@@ -20,6 +20,10 @@ public:
     void setStateTopic(const char* topic) { _stateTopic = topic; }
     void setValueTemplate(const char* valTemplate) { _valueTemplate = valTemplate; }
 
+    const char* getUnitOfMeasurement() const { return _unitOfMeasurement; }
+    const char* getStateTopic() const { return _stateTopic; }
+    const char* getValueTemplate() const { return _valueTemplate; }
+
     void buildConfig(JsonObject& doc, const char* baseTopic) override {
         HAEntity::buildConfig(doc, baseTopic);
         if (_unitOfMeasurement != nullptr) doc["unit_of_measurement"] = _unitOfMeasurement;

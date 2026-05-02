@@ -6,7 +6,8 @@
 
 MQTTHADeviceManager::MQTTHADeviceManager(PubSubClient& mqttClient, HADevice& device)
     : _mqttClient(mqttClient), _device(device), _discoveryPrefix("homeassistant"),
-      _onlinePayload("online"), _offlinePayload("offline"), _discoveryPublished(false) {
+      _onlinePayload("online"), _offlinePayload("offline"), 
+      _mqttUser(nullptr), _mqttPass(nullptr), _discoveryPublished(false) {
     
     _availabilityTopic = String(_discoveryPrefix) + "/device/" + _device.getId() + "/status";
 }
@@ -21,8 +22,7 @@ void MQTTHADeviceManager::addEntity(HAEntity* entity) {
 }
 
 void MQTTHADeviceManager::begin() {
-    _mqttClient.setServer("your_broker_ip", 1883); // Placeholder, user will configure client directly ideally.
-    _mqttClient.setWill(_availabilityTopic.c_str(), _offlinePayload, true, 1);
+    // _mqttClient.setServer("your_broker_ip", 1883); // Placeholder, user will configure client directly ideally.
 }
 
 void MQTTHADeviceManager::loop() {
@@ -32,8 +32,44 @@ void MQTTHADeviceManager::loop() {
     _mqttClient.loop();
 }
 
+void MQTTHADeviceManager::handleMessage(char* topic, byte* payload, unsigned int length) {
+    String topicStr(topic);
+    String payloadStr;
+    for (unsigned int i = 0; i < length; i++) {
+        payloadStr += (char)payload[i];
+    }
+
+    for (size_t i = 0; i < _entities.size(); ++i) {
+        const char* cmdTopic = _entities[i]->getCommandTopic();
+        if (cmdTopic != nullptr && topicStr == cmdTopic) {
+            _entities[i]->handleCommand(payloadStr.c_str());
+        }
+    }
+}
+
+void MQTTHADeviceManager::publishState(HASwitch& entity, bool state) {
+    if (entity.getStateTopic() != nullptr) {
+        _mqttClient.publish(entity.getStateTopic(), state ? "ON" : "OFF", true);
+    }
+}
+
 void MQTTHADeviceManager::_connectAndEnsureDiscovery() {
-    if (_mqttClient.connect(_device.getId().c_str(), _availabilityTopic.c_str(), 1, true, _offlinePayload)) {
+    bool connected = false;
+    if (_mqttUser != nullptr && _mqttPass != nullptr) {
+        connected = _mqttClient.connect(_device.getId(), _mqttUser, _mqttPass, _availabilityTopic.c_str(), 1, true, _offlinePayload);
+    } else {
+        connected = _mqttClient.connect(_device.getId(), _availabilityTopic.c_str(), 1, true, _offlinePayload);
+    }
+
+    if (connected) {
+        // Subscribe to all command topics
+        for (size_t i = 0; i < _entities.size(); ++i) {
+            const char* cmdTopic = _entities[i]->getCommandTopic();
+            if (cmdTopic != nullptr) {
+                _mqttClient.subscribe(cmdTopic);
+            }
+        }
+
         if (!_discoveryPublished) {
             publishDiscovery();
             _discoveryPublished = true;

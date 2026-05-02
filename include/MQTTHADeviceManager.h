@@ -55,6 +55,19 @@ public:
     void loop();
 
     /**
+     * @brief Centralized MQTT message handler.
+     * Route this from your `mqttClient.setCallback`.
+     */
+    void handleMessage(char* topic, byte* payload, unsigned int length);
+
+    /**
+     * @brief Publish the state of a switch entity.
+     * @param entity The HASwitch entity.
+     * @param state true for ON, false for OFF.
+     */
+    void publishState(HASwitch& entity, bool state);
+
+    /**
      * @brief The payload sent on disconnected LWT. Default: "offline"
      * @param payload string value
      */
@@ -66,12 +79,24 @@ public:
      */
     void setOnlinePayload(const char* payload) { _onlinePayload = payload; }
 
+    /**
+     * @brief Set MQTT credentials for authentication.
+     * @param user MQTT username.
+     * @param pass MQTT password.
+     */
+    void setCredentials(const char* user, const char* pass) {
+        _mqttUser = user;
+        _mqttPass = pass;
+    }
+
 private:
     PubSubClient& _mqttClient;
     HADevice& _device;
     const char* _discoveryPrefix;
     const char* _onlinePayload;
     const char* _offlinePayload;
+    const char* _mqttUser;
+    const char* _mqttPass;
     std::vector<HAEntity*> _entities;
 
     String _availabilityTopic;
