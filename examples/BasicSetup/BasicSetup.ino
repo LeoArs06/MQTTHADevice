@@ -6,9 +6,7 @@
 #endif
 #include <PubSubClient.h>
 
-#include "HADevice.h"
-#include "HAMQTT.h"
-#include "entities/HASwitch.h"
+#include <MQTTHADevice.h>
 
 // Your Wi-Fi & MQTT credentials
 const char* ssid = "YOUR_SSID";
@@ -51,7 +49,8 @@ void reconnect() {
       Serial.println("connected");
       
       // Publish discovery messages once connected
-      // HAMQTT::publishDiscovery(&mqttClient, device); // Assuming this is how it works
+      // // Example with manager (assuming it's initialized as `MQTTHADeviceManager manager(mqttClient, device);`)
+      // manager.publishDiscovery(); 
     } else {
       Serial.print("failed, rc=");
       Serial.print(mqttClient.state());

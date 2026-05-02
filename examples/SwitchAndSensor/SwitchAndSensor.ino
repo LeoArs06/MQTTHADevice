@@ -6,10 +6,7 @@
 #endif
 #include <PubSubClient.h>
 
-#include "HADevice.h"
-#include "HAMQTT.h"
-#include "entities/HASwitch.h"
-#include "entities/HASensor.h"
+#include <MQTTHADevice.h>
 
 // Hardware settings
 #define RELAY_PIN 4
@@ -57,7 +54,8 @@ void reconnect() {
       Serial.println("connected");
       
       // Send auto-discovery configuration
-      // HAMQTT::publishDiscovery(&mqttClient, device); // Assuming typical pub-sub configuration
+      // // Example with manager (assuming it's initialized as `MQTTHADeviceManager manager(mqttClient, device);`)
+      // manager.publishDiscovery(); 
       
       // Subscribe to command topic for switch
       // mqttClient.subscribe(myRelay.getCommandTopic().c_str());

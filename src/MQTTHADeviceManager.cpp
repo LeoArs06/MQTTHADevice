@@ -1,39 +1,39 @@
 /**
- * @file HAMQTT.cpp
- * @brief Implementation for Core HAMQTT Auto-Discovery Controller.
+ * @file MQTTHADeviceManager.cpp
+ * @brief Implementation for Core MQTTHADeviceManager Auto-Discovery Controller.
  */
-#include "HAMQTT.h"
+#include "MQTTHADeviceManager.h"
 
-HAMQTT::HAMQTT(PubSubClient& mqttClient, HADevice& device)
+MQTTHADeviceManager::MQTTHADeviceManager(PubSubClient& mqttClient, HADevice& device)
     : _mqttClient(mqttClient), _device(device), _discoveryPrefix("homeassistant"),
       _onlinePayload("online"), _offlinePayload("offline"), _discoveryPublished(false) {
     
     _availabilityTopic = String(_discoveryPrefix) + "/device/" + _device.getId() + "/status";
 }
 
-void HAMQTT::setDiscoveryPrefix(const char* prefix) {
+void MQTTHADeviceManager::setDiscoveryPrefix(const char* prefix) {
     _discoveryPrefix = prefix;
     _availabilityTopic = String(_discoveryPrefix) + "/device/" + _device.getId() + "/status";
 }
 
-void HAMQTT::addEntity(HAEntity* entity) {
+void MQTTHADeviceManager::addEntity(HAEntity* entity) {
     _entities.push_back(entity);
 }
 
-void HAMQTT::begin() {
+void MQTTHADeviceManager::begin() {
     _mqttClient.setServer("your_broker_ip", 1883); // Placeholder, user will configure client directly ideally.
     _mqttClient.setWill(_availabilityTopic.c_str(), _offlinePayload, true, 1);
 }
 
-void HAMQTT::loop() {
+void MQTTHADeviceManager::loop() {
     if (!_mqttClient.connected()) {
         _connectAndEnsureDiscovery();
     }
     _mqttClient.loop();
 }
 
-void HAMQTT::_connectAndEnsureDiscovery() {
-    if (_mqttClient.connect(_device.getId(), _availabilityTopic.c_str(), 1, true, _offlinePayload)) {
+void MQTTHADeviceManager::_connectAndEnsureDiscovery() {
+    if (_mqttClient.connect(_device.getId().c_str(), _availabilityTopic.c_str(), 1, true, _offlinePayload)) {
         if (!_discoveryPublished) {
             publishDiscovery();
             _discoveryPublished = true;
@@ -42,7 +42,7 @@ void HAMQTT::_connectAndEnsureDiscovery() {
     }
 }
 
-bool HAMQTT::publishDiscovery() {
+bool MQTTHADeviceManager::publishDiscovery() {
     String topic = String(_discoveryPrefix) + "/device/" + _device.getId() + "/config";
     
     JsonDocument doc;
@@ -56,7 +56,7 @@ bool HAMQTT::publishDiscovery() {
     if (_device.getSoftwareVersion() != nullptr) dev["sw"] = _device.getSoftwareVersion();
 
     JsonObject o = doc["o"].to<JsonObject>();
-    o["name"] = "HAMQTT_Device_Discovery";
+    o["name"] = "MQTTHADevice_Discovery";
     o["sw"] = "0.1.0";
 
     JsonObject cmps = doc["cmps"].to<JsonObject>();

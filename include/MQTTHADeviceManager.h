@@ -1,5 +1,5 @@
 /**
- * @file HAMQTT.h
+ * @file MQTTHADeviceManager.h
  * @brief Core Auto-Discovery Logic utilizing `cmps` approach.
  * @version 0.1
  * @date 2026-05-02
@@ -18,12 +18,12 @@
 #include "entities/HASwitch.h"
 
 /**
- * @class HAMQTT
+ * @class MQTTHADeviceManager
  * @brief Main controller for Home Assistant MQTT Auto Discovery via device components (`cmps`).
  */
-class HAMQTT {
+class MQTTHADeviceManager {
 public:
-    HAMQTT(PubSubClient& mqttClient, HADevice& device);
+    MQTTHADeviceManager(PubSubClient& mqttClient, HADevice& device);
 
     /**
      * @brief Set the Discovery Prefix used globally in Home Assistant.
