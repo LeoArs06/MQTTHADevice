@@ -7,7 +7,7 @@
 MQTTHADeviceManager::MQTTHADeviceManager(PubSubClient& mqttClient, HADevice& device)
     : _mqttClient(mqttClient), _device(device), _discoveryPrefix("homeassistant"),
       _onlinePayload("online"), _offlinePayload("offline"), 
-      _mqttUser(nullptr), _mqttPass(nullptr), _discoveryPublished(false) {
+      _mqttUser(nullptr), _mqttPass(nullptr), _verbose(false), _discoveryPublished(false) {
     
     _availabilityTopic = String(_discoveryPrefix) + "/device/" + _device.getId() + "/status";
 }
@@ -49,41 +49,57 @@ void MQTTHADeviceManager::handleMessage(char* topic, byte* payload, unsigned int
 
 void MQTTHADeviceManager::publishState(HASwitch& entity, bool state) {
     if (entity.getStateTopic() != nullptr) {
-        _mqttClient.publish(entity.getStateTopic(), state ? "ON" : "OFF", true);
+        bool res = _mqttClient.publish(entity.getStateTopic(), state ? "ON" : "OFF", true);
+        if (_verbose) {
+            Serial.print("Publish State ["); Serial.print(entity.getStateTopic());
+            Serial.print("] -> "); Serial.print(state ? "ON" : "OFF");
+            Serial.println(res ? " OK" : " FAILED");
+        }
     }
 }
 
 void MQTTHADeviceManager::_connectAndEnsureDiscovery() {
-    Serial.println("Tentativo di connessione MQTT...");
+    if (_verbose) Serial.println("Tentativo di connessione MQTT...");
     bool connected = false;
     if (_mqttUser != nullptr && _mqttPass != nullptr) {
-        Serial.println("Uso credenziali...");
+        if (_verbose) Serial.println("Uso credenziali...");
         connected = _mqttClient.connect(_device.getId(), _mqttUser, _mqttPass, _availabilityTopic.c_str(), 1, true, _offlinePayload);
     } else {
-        Serial.println("Senza credenziali...");
+        if (_verbose) Serial.println("Senza credenziali...");
         connected = _mqttClient.connect(_device.getId(), _availabilityTopic.c_str(), 1, true, _offlinePayload);
     }
 
     if (connected) {
-        Serial.println("Connesso! Sottoscrizione topics...");
+        if (_verbose) {
+            Serial.print("Connesso! Availability Topic: "); Serial.println(_availabilityTopic);
+            Serial.println("Sottoscrizione topics...");
+        }
         // Subscribe to all command topics
         for (size_t i = 0; i < _entities.size(); ++i) {
             const char* cmdTopic = _entities[i]->getCommandTopic();
             if (cmdTopic != nullptr) {
                 _mqttClient.subscribe(cmdTopic);
+                if (_verbose) { Serial.print("Subscribed to: "); Serial.println(cmdTopic); }
             }
         }
 
         if (!_discoveryPublished) {
-            Serial.println("Pubblicazione Discovery...");
+            if (_verbose) Serial.println("Pubblicazione Discovery...");
             publishDiscovery();
             _discoveryPublished = true;
         }
-        _mqttClient.publish(_availabilityTopic.c_str(), _onlinePayload, true);
-        Serial.println("Dispositivo Pronto.");
+        bool res = _mqttClient.publish(_availabilityTopic.c_str(), _onlinePayload, true);
+        if (_verbose) {
+            Serial.print("Publish Availability ["); Serial.print(_availabilityTopic);
+            Serial.print("] -> "); Serial.print(_onlinePayload);
+            Serial.println(res ? " OK" : " FAILED");
+            Serial.println("Dispositivo Pronto.");
+        }
     } else {
-        Serial.print("Connessione fallita, rc=");
-        Serial.println(_mqttClient.state());
+        if (_verbose) {
+            Serial.print("Connessione fallita, rc=");
+            Serial.println(_mqttClient.state());
+        }
     }
 }
 
@@ -118,5 +134,13 @@ bool MQTTHADeviceManager::publishDiscovery() {
     String payload;
     serializeJson(doc, payload);
 
-    return _mqttClient.publish(topic.c_str(), payload.c_str(), true);
+    bool res = _mqttClient.publish(topic.c_str(), payload.c_str(), true);
+    if (_verbose) {
+        Serial.print("Publish Discovery ["); Serial.print(topic);
+        Serial.print("] -> "); Serial.println(res ? " OK" : " FAILED");
+        if (res) {
+            Serial.print("Payload: "); Serial.println(payload);
+        }
+    }
+    return res;
 }

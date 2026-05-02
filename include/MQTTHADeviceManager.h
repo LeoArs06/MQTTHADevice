@@ -89,6 +89,11 @@ public:
         _mqttPass = pass;
     }
 
+    /**
+     * @brief Enable or disable verbose serial logging.
+     */
+    void setVerbose(bool enabled) { _verbose = enabled; }
+
 private:
     PubSubClient& _mqttClient;
     HADevice& _device;
@@ -97,6 +102,7 @@ private:
     const char* _offlinePayload;
     const char* _mqttUser;
     const char* _mqttPass;
+    bool _verbose;
     std::vector<HAEntity*> _entities;
 
     String _availabilityTopic;
